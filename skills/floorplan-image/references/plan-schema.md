@@ -59,3 +59,11 @@
 `window.Floorplan.loadPlan(plan)` 导入裸计划；`exportPlan()` 返回当前几何/名称/材质/家具；`getState()` 返回包含拆墙、测量的完整状态。文件菜单导出完整状态（含 `plan`），再导入可恢复拆墙和测量。传入旧版仅家具的 JSON 会明确拒绝，不混用默认户型。
 
 几何修改方式：文件 → 编辑户型数据 → 改房间顶点、墙矩形或门窗 → 校验并应用。家具仍使用原有拖动/旋转/尺寸编辑交互。几何和家具修改都可撤销。该版本尚未提供墙体顶点的鼠标拖动建模工具。
+
+## 图片还原扩展
+
+像素观测与 `placement` 贴墙约束见 [pixel-observations.md](pixel-observations.md)。新增 `ottoman`（无靠背脚凳）和 `endtable`（方形边几），避免把脚凳误映射成带靠背单人沙发。
+
+房间可选 `floorRotation`（度）、`floorColor`（#RRGGBB，3D材质色调）；家具可选 `accentColor`、`frameColor`、`pillowColor`。这些字段描述视觉近似，不代表精确家具资产。
+
+构建时通过 `--reference-image` 嵌入 PNG/JPEG/WebP 原图；需要 `reference` 中的 width/height/originPx/mmPerPixel 完整标定。不要把文件绝对路径当作网页可访问的图片 URL。

@@ -44,6 +44,19 @@ SOFTWARE.
 
 Agent 根据 SKILL.md 识别图片，再运行 Python 脚本。HTML 自身不调用 AI API，也不包含 API 密钥。当前无需训练或部署模型。单张室内实景照不能唯一恢复完整户型，当前几何仅支持正交墙体。
 
+## 图片还原与贴墙复核
+
+Skill 现在先记录原图像素观测，再换算毫米。显式指定床头/柜背接触的墙面，保持居中家具原位；校正器拒绝穿墙、吸到门窗洞口、朝向冲突或过大的位置修正。
+
+```sh
+python3 skills/floorplan-image/scripts/reconstruct.py from-pixels observations.json --output plan.json --report fidelity.json
+python3 skills/floorplan-image/scripts/plan_tools.py build plan.json --reference-image source.png --output outputs/index.html
+```
+
+页面新增“原图叠加”和3D“正俯视”。模型的水平占地与2D宽深保持一致；正俯视暂时隐藏厨房上柜/烟机，方便对照下方台面。用户手动移动或改尺寸后会解除旧贴墙约束；重新生成的计划也不会被旧浏览器缓存覆盖。
+
+原图与识别结果默认保留在输出目录，不纳入公开仓库。框一致性指标衡量观测数据的几何还原，不能代表独立的图像识别准确率。详细格式见 [像素观测与贴墙协议](skills/floorplan-image/references/pixel-observations.md)。
+
 ## 不通过 Agent，直接加载数据
 
 ```sh

@@ -1,5 +1,8 @@
 """户型数据校验和单文件 HTML 构建，Python 3.8+，无第三方依赖。"""
 import argparse
+import base64
+import mimetypes
+import sys
 import copy
 import json
 import math
@@ -7,6 +10,9 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT / 'scripts'))
+from reconstruct import refine_plan
+
 CATALOG = json.loads((ROOT / "references/furniture-catalog.json").read_text())
 TYPES = {x["type"] for x in CATALOG}
 MATERIALS = {"wood", "walnut", "tile800", "tile600", "marble", "antislip", "terrazzo", "carpet"}
@@ -43,7 +49,7 @@ def segments_touch(a, b, c, d):
 def inside(p, poly):
     hit = False
     for a,b in zip(poly,poly[1:]+poly[:1]):
-        if abs(cross(a,b,p)) < 1e-6 and min(a[0],b[0]) <= p[0] <= max(a[0],b[0]) and min(a[1],b[1]) <= p[1] <= max(a[1],b[1]):
+        if abs(cross(a,b,p)) < 1e-6 and min(a[0],b[0])-1e-6 <= p[0] <= max(a[0],b[0])+1e-6 and min(a[1],b[1])-1e-6 <= p[1] <= max(a[1],b[1])+1e-6:
             return True
         if (a[1]>p[1]) != (b[1]>p[1]) and p[0] < (b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0]:
             hit = not hit
@@ -73,11 +79,17 @@ def validate(plan):
     warnings=[]
     if p["scale"]["status"]!="measured":
         warnings.append("尺寸为估计/相对尺度，面积与造价不代表实测")
+    if p.get('reference'):
+        r=p['reference']
+        require(isinstance(r,dict) and point(r.get('originPx')) and all(finite(r.get(k)) and r[k]>0 for k in ('width','height','mmPerPixel')),'参考图标定无效')
+        if r.get('dataUrl'):require(bool(re.fullmatch(r'data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+',r['dataUrl'])),'参考图编码无效')
     ids=set()
     for r in p["rooms"]:
         require(isinstance(r,dict) and token(r.get("id")) and r["id"] not in ids,"房间 id 无效/重复")
         ids.add(r["id"])
         require(isinstance(r.get("name"),str) and r.get("mat") in MATERIALS,"房间名称/材质无效")
+        require("floorRotation" not in r or finite(r["floorRotation"]),"地板角度无效")
+        require("floorColor" not in r or bool(re.fullmatch(r"#[0-9a-fA-F]{6}",r["floorColor"])),"地板颜色无效")
         poly=r.get("poly")
         require(isinstance(poly,list) and len(poly)>=3 and all(point(v) for v in poly),r["id"]+" 轮廓无效")
         require(len({tuple(v) for v in poly})==len(poly),r["id"]+" 重复顶点（首尾无需重复）")
@@ -114,6 +126,10 @@ def validate(plan):
         require(f.get("type") in TYPES,"未知家具类型: "+str(f.get("type")))
         require(isinstance(f.get("name"),str) and all(finite(f.get(k)) for k in ("cx","cy","w","d","rot")) and f["w"]>0 and f["d"]>0,"家具位置/尺寸无效")
         require(bool(re.fullmatch(r"#[0-9a-fA-F]{6}",f.get("color","#dddddd"))),"家具颜色需 #RRGGBB")
+        if f.get('placement'):
+            require(isinstance(f['placement'],dict) and f['placement'].get('mode') in ('wall','free'),'placement.mode 需要 wall/free')
+        for k in ("accentColor","frameColor","pillowColor"):
+            require(k not in f or bool(re.fullmatch(r"#[0-9a-fA-F]{6}",f[k])),"家具配色无效")
         if not any(inside([f["cx"],f["cy"]],r["poly"]) for r in p["rooms"]):
             warnings.append(f["id"]+" 家具中心位于所有房间之外")
         rad=math.radians(f["rot"]);c,s=math.cos(rad),math.sin(rad)
@@ -123,8 +139,15 @@ def validate(plan):
     return warnings
 
 
-def build(plan,output):
+def build(plan,output,reference_image=None):
+    validate(plan)
+    plan,adjustments=refine_plan(plan)
     warnings=validate(plan)
+    if reference_image:
+        image=Path(reference_image);mime=mimetypes.guess_type(str(image))[0]
+        if mime not in {'image/png','image/jpeg','image/webp'}:raise ValueError('参考图仅支持 PNG/JPEG/WebP')
+        if not plan.get('reference'):raise ValueError('参考图需要 reference 像素标定信息')
+        plan['reference']['dataUrl']='data:'+mime+';base64,'+base64.b64encode(image.read_bytes()).decode('ascii')
     template=(ROOT/"assets/index.html").read_text()
     payload=json.dumps(plan,ensure_ascii=False,separators=(",",":"),allow_nan=False).replace("<","\\u003c").replace("\u2028","\\u2028").replace("\u2029","\\u2029")
     pattern=r"/\* PLAN_DATA_START \*/.*?/\* PLAN_DATA_END \*/"
@@ -140,12 +163,13 @@ def main():
     cli.add_argument("command",choices=["validate","build"])
     cli.add_argument("plan")
     cli.add_argument("--output")
+    cli.add_argument("--reference-image")
     a=cli.parse_args()
     try:
         p=json.loads(Path(a.plan).read_text())
         if a.command=="build" and not a.output:
             cli.error("build 需要 --output")
-        warnings=build(p,a.output) if a.command=="build" else validate(p)
+        warnings=build(p,a.output,a.reference_image) if a.command=="build" else validate(p)
         print(json.dumps({"ok":True,"warnings":warnings,"output":a.output},ensure_ascii=False))
     except (ValueError,KeyError,TypeError) as e:
         cli.exit(1,"校验失败: "+str(e)+"\n")
