@@ -228,7 +228,7 @@ main.drawer-panel #fab{opacity:0;visibility:hidden}
       <button class="btn chip" id="tgLib" data-en="◧ Library">◧ 家具库</button>
       <button class="btn chip" id="tgPanel" data-en="Properties ◨">属性 ◨</button>
     </div>
-    <div class="brand"><b data-en="3BR 2LR 2BA · Interior Design">三室两厅两卫 · 装修设计</b><span id="subtitle">原始户型 1:60 · 尺寸单位 mm</span></div>
+    <div class="brand"><b id="planTitle">可编辑户型</b><span id="subtitle">原始户型 1:60 · 尺寸单位 mm</span></div>
     <div class="grp seg" id="viewSeg" title="切换 2D / 3D (T)" data-en-title="Switch 2D / 3D (T)">
       <span class="pill"></span>
       <button class="btn" data-view="2d" data-en="2D Plan">2D 平面</button>
@@ -288,10 +288,15 @@ main.drawer-panel #fab{opacity:0;visibility:hidden}
       <div class="menu-pop">
         <button class="btn" id="exportPng" data-en="Export image">导出图片</button>
         <button class="btn" id="exportJson" data-en="Export plan JSON">导出方案 JSON</button>
+        <button class="btn" id="editPlan">编辑户型数据</button>
         <button class="btn" id="importJson" data-en="Import plan">导入方案</button>
         <button class="btn danger" id="reset" data-en="Reset to default">重置为默认方案</button>
       </div></details>
-    <input type="file" id="fileIn" accept=".json,application/json" hidden>
+    <dialog id="planEditor" style="width:min(850px,90vw);border:1px solid #ccc;border-radius:12px;padding:20px">
+<h3>完整户型数据 · 单位 mm</h3><p>可修改房间轮廓、墙体、门窗和家具；应用后可撤销。未知尺寸为估计，请对照原图复核。</p>
+<textarea id="planText" style="width:100%;height:55vh;font:13px monospace"></textarea>
+<p id="planError" style="color:#b33"></p><button id="applyPlan" class="btn">校验并应用</button> <button id="cancelPlan" class="btn">关闭</button></dialog>
+<input type="file" id="fileIn" accept=".json,application/json" hidden>
   </header>
 
   <aside class="lib">
@@ -392,7 +397,7 @@ function applyStaticLang(){
  *  右：3370/240/2760/240/3950 = 10560
  * ============================================================ */
 // 墙体：[x0,y0,x1,y1,类型]  b=承重(黑) e=外墙 n=可拆非承重 low=矮墙
-const WALLS = [
+let WALLS = [
   // 顶部外墙
   [1580,-240,2120,0,'b'],[1580,0,1820,300,'b'],[2120,-240,4580,0,'e'],[4580,-240,5140,0,'e'],
   [5760,-240,6050,0,'e'],[6050,-240,6600,0,'b'],[6360,0,6600,300,'b'],[6600,-240,9960,0,'e'],
@@ -420,7 +425,7 @@ const WALLS = [
   [6083,4600,6323,6610,'n'],[6323,6370,9960,6610,'n'],
 ];
 // 窗
-const WINS = [
+let WINS = [
   [5140,-240,5760,0],[1580,300,1820,3370],[-240,3370,1580,3610],[2180,3825,2420,4430],
   [10510,6370,12090,6610],[11850,6610,12090,9960],
   // 飘窗（主卧 / 子女房）
@@ -428,7 +433,7 @@ const WINS = [
   [10510,4110,11130,4210],[11030,4210,11130,5785],[10510,5785,11130,5885],
 ];
 // 平开门：洞口、铰点、关闭方向、开启方向、门宽
-const DOORS = [
+let DOORS = [
   {name:'小孩房门',rect:[4580,2400,4820,3280],h:[4580,3280],c:[0,-1],o:[-1,0],len:880},
   {name:'主卧门',rect:[6360,2400,6600,3280],h:[6600,3280],c:[0,-1],o:[1,0],len:880},
   {name:'主卫门',rect:[6360,1198,6600,1983],h:[6360,1198],c:[0,1],o:[-1,0],len:785},
@@ -437,12 +442,12 @@ const DOORS = [
   {name:'入户门',rect:[4580,8310,4820,9200],h:[4820,9200],c:[0,-1],o:[1,0],len:890,entry:true},
 ];
 // 推拉门
-const SLIDES = [
+let SLIDES = [
   {rect:[10270,7400,10510,9770],v:true},
   {rect:[1275,4950,2090,5190],v:false},
 ];
 const R = (x0,y0,x1,y1) => [[x0,y0],[x1,y0],[x1,y1],[x0,y1]];
-const ROOMS = [
+let ROOMS = [
   {id:'master', name:'主卧室', poly:R(6600,0,10270,3370), mat:'wood', at:[8435,2420]},
   {id:'mbath', name:'主卫浴', poly:R(4820,0,6360,2080), mat:'antislip', at:[5980,1780]},
   {id:'kid', name:'小孩房', poly:R(1820,0,4580,3370), mat:'wood', at:[3380,2330]},
@@ -536,22 +541,105 @@ function defaultFurniture(){ return [
   F('armchair','休闲椅',11180,8880,750,750,180,'#d6b99a'), F('plant','绿植',11550,10250,500,500),
 ];}
 
-function defaultState(){
-  const rooms = {}; ROOMS.forEach(r => rooms[r.id] = {name:r.name, mat:r.mat});
-  return {furniture:defaultFurniture(), rooms, demolished:[], measures:[]};
+const BUILTIN_GEOMETRY = JSON.parse(JSON.stringify({rooms:ROOMS,walls:WALLS,windows:WINS,doors:DOORS,slides:SLIDES}));
+const EMBEDDED_PLAN = /* PLAN_DATA_START */ null /* PLAN_DATA_END */;
+function initialPlan(){
+  return EMBEDDED_PLAN || {schemaVersion:1,id:'upstream-demo',title:'示例户型',units:'mm',height:2800,
+    scale:{status:'estimated',note:'上游示例按图纸标注推算'},...BUILTIN_GEOMETRY,furniture:defaultFurniture()};
 }
-
-const STORE = 'huxing-design-v1';
+function planState(p){
+  const rooms = {}; p.rooms.forEach(r => rooms[r.id] = {name:r.name,mat:r.mat});
+  return {plan:JSON.parse(JSON.stringify(p)), furniture:JSON.parse(JSON.stringify(p.furniture)),rooms,demolished:[],measures:[]};
+}
+function defaultState(){ return planState(initialPlan()); }
+const STORE = 'floorplan-image-v1:' + location.pathname + ':' + (EMBEDDED_PLAN?.id || 'demo');
 function load(){
-  try { const s = JSON.parse(localStorage.getItem(STORE)); if (s && Array.isArray(s.furniture)) return fixState(s); } catch(e) {}
+  try { const s = JSON.parse(localStorage.getItem(STORE)); if(s?.plan) { validatePlan(s.plan); return fixState(s); } } catch(e) {}
   return null;
 }
 function fixState(s){
-  const d = defaultState();
-  s.rooms = Object.assign(d.rooms, s.rooms || {});
-  s.demolished = s.demolished || []; s.measures = s.measures || [];
+  if(!s.plan) throw new Error('请导入包含完整建筑几何的新版 JSON');
+  validatePlan(s.plan);
+  const defaults = {}; s.plan.rooms.forEach(r => defaults[r.id]={name:r.name,mat:r.mat});
+  s.rooms = Object.assign(defaults,s.rooms||{});
+  for(const r of s.plan.rooms){
+    const v=s.rooms[r.id]; if(typeof v.name!=='string'||!MATS[v.mat]) throw new Error('房间名称或材质无效');
+  }
+  if(!Array.isArray(s.furniture)) s.furniture=JSON.parse(JSON.stringify(s.plan.furniture));
+  validatePlan({...s.plan,furniture:s.furniture});
+  s.demolished=(s.demolished||[]).filter(id=>/^w\d+$/.test(id)&&s.plan.walls[+id.slice(1)]);
+  s.measures=s.measures||[];
+  if(!Array.isArray(s.measures)||s.measures.some(m=>!m||![m.a?.x,m.a?.y,m.b?.x,m.b?.y].every(v=>typeof v==='number'&&Number.isFinite(v))))throw new Error('测量数据无效');
   return s;
 }
+
+function validatePlan(p){
+  const fail=m=>{throw new Error(m);};
+  const num=n=>typeof n==='number'&&Number.isFinite(n)&&Math.abs(n)<=10000000;
+  const pt=a=>Array.isArray(a)&&a.length===2&&a.every(num);
+  const rect=a=>Array.isArray(a)&&a.length>=4&&a.slice(0,4).every(num)&&a[2]>a[0]&&a[3]>a[1];
+  const token=s=>typeof s==='string'&&/^[A-Za-z][A-Za-z0-9_-]*$/.test(s);
+  if(!p||p.schemaVersion!==1||p.units!=='mm'||!token(p.id))fail('需要 schemaVersion:1、units:mm 和有效 id');
+  if(!num(p.height)||p.height<2000||p.height>6000)fail('height 需要在 2000～6000 mm');
+  if(!p.scale||!['measured','estimated','relative'].includes(p.scale.status))fail('缺少尺度状态');
+  if(p.scale.status==='measured'&&!p.scale.evidence)fail('实测尺度需要标注依据');
+  for(const k of ['rooms','walls','windows','doors','slides','furniture'])if(!Array.isArray(p[k]))fail(k+' 必须为数组');
+  if(!p.rooms.length)fail('至少需要一个房间');
+  const cross=(a,b,c)=>(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
+  const on=(a,b,p)=>Math.abs(cross(a,b,p))<1e-6&&p[0]>=Math.min(a[0],b[0])&&p[0]<=Math.max(a[0],b[0])&&p[1]>=Math.min(a[1],b[1])&&p[1]<=Math.max(a[1],b[1]);
+  const inside=(p,poly)=>{let hit=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[j],b=poly[i];if(on(a,b,p))return true;if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])hit=!hit;}return hit;};
+  const touches=(a,b,c,d)=>(cross(a,b,c)*cross(a,b,d)<0&&cross(c,d,a)*cross(c,d,b)<0)||on(a,b,c)||on(a,b,d)||on(c,d,a)||on(c,d,b);
+  const overlap=(a,b)=>Math.min(a[2],b[2])-Math.max(a[0],b[0])>1&&Math.min(a[3],b[3])-Math.max(a[1],b[1])>1;
+  const ids=new Set();
+  for(const r of p.rooms){
+    if(!token(r.id)||ids.has(r.id)||typeof r.name!=='string'||!MATS[r.mat])fail('房间 id、名称或材质无效/重复');ids.add(r.id);
+    if(!Array.isArray(r.poly)||r.poly.length<3||!r.poly.every(pt))fail(r.id+' 的轮廓点无效');
+    const a=r.poly.reduce((v,t,i)=>{const q=r.poly[(i+1)%r.poly.length];return v+t[0]*q[1]-q[0]*t[1];},0);
+    if(Math.abs(a)<1)fail(r.id+' 面积为零');
+    const n=r.poly.length;
+    if(new Set(r.poly.map(p=>p.join(','))).size!==n)fail(r.id+' 重复顶点');
+    for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){
+      if(j===i+1||(i===0&&j===n-1))continue;
+      if(touches(r.poly[i],r.poly[(i+1)%n],r.poly[j],r.poly[(j+1)%n]))fail(r.id+' 轮廓自交');
+    }
+    if(r.at&&(!pt(r.at)||!inside(r.at,r.poly)))fail(r.id+' 标签点无效');
+  }
+  for(const w of p.walls)if(!rect(w)||!['b','e','n','low','u'].includes(w[4]))fail('墙体需要 [x0,y0,x1,y1,b/e/n/low/u]');
+  for(const w of p.windows)if(!rect(w))fail('窗矩形无效');
+  for(const d of p.doors){
+    if(!rect(d.rect)||!pt(d.h)||!pt(d.c)||!pt(d.o)||!num(d.len)||d.len<=0)fail('门数据无效');
+    if([...d.c,...d.o].some(v=>v!==0&&Math.abs(v)!==1))fail('首版门方向仅支持正交轴向');
+    if(Math.abs(Math.hypot(...d.c)-1)>.001||Math.abs(Math.hypot(...d.o)-1)>.001||Math.abs(d.c[0]*d.o[0]+d.c[1]*d.o[1])>.001)fail('门方向必须是正交单位向量');
+  }
+  for(const d of p.slides)if(!rect(d.rect)||typeof d.v!=='boolean')fail('推拉门数据无效');
+  for(const o of [...p.windows,...p.doors.map(d=>d.rect),...p.slides.map(d=>d.rect)])if(p.walls.some(w=>overlap(o,w)))fail('门窗洞口被实体墙覆盖，请切开墙段');
+  const types=new Set(LIB.flatMap(c=>c.items.map(i=>i[0])));ids.clear();
+  for(const f of p.furniture){
+    if(!token(f.id)||ids.has(f.id)||!types.has(f.type)||typeof f.name!=='string'||![f.cx,f.cy,f.w,f.d,f.rot].every(num)||f.w<=0||f.d<=0)fail('家具 id、类型或尺寸无效');
+    if(f.color&&!/^#[0-9a-fA-F]{6}$/.test(f.color))fail('家具颜色需要 #RRGGBB');ids.add(f.id);
+  }
+  return p;
+}
+let appliedGeometry=null;
+function activateGeometry(){
+  if(appliedGeometry===state.plan)return;
+  const p=state.plan; ROOMS=p.rooms;WALLS=p.walls;WINS=p.windows;DOORS=p.doors;SLIDES=p.slides;
+  const pts=[...ROOMS.flatMap(r=>r.poly),...WALLS.flatMap(w=>[[w[0],w[1]],[w[2],w[3]]])];
+  const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
+  const x0=Math.min(...xs),y0=Math.min(...ys),x1=Math.max(...xs),y1=Math.max(...ys);
+  Object.assign(BOUNDS,{x:x0-1500,y:y0-1500,w:x1-x0+3000,h:y1-y0+3000});
+  appliedGeometry=p;
+  if(window.View3D)window.View3D.setPlan(p,(x0+x1)/2,(y0+y1)/2);
+}
+function exportPlan(){
+  const p=JSON.parse(JSON.stringify(state.plan));
+  p.rooms.forEach(r=>Object.assign(r,state.rooms[r.id]));p.furniture=JSON.parse(JSON.stringify(state.furniture));
+  return p;
+}
+function loadPlan(p){
+  validatePlan(p);const b=snap();state=planState(p);ui.sel=null;ui.mA=null;commit(b);renderAll();fitView();
+}
+window.Floorplan={validatePlan,loadPlan,exportPlan,getState:()=>JSON.parse(snap())};
 
 const PX_MM = 25.4 / 96;                       // 1 CSS px = 0.2646 mm
 const COARSE = matchMedia('(pointer:coarse)').matches;   // iPad / 手机等触屏为主的设备
@@ -575,7 +663,7 @@ function commit(before){ undoStack.push(before); if (undoStack.length > 150) und
 function mutate(fn){ const b = snap(); fn(); commit(b); renderAll(); }
 function undo(){ if (!undoStack.length) return toast(tr('没有可撤销的操作', 'Nothing to undo')); redoStack.push(snap()); state = JSON.parse(undoStack.pop()); validateSel(); save(); renderAll(); }
 function redo(){ if (!redoStack.length) return; undoStack.push(snap()); state = JSON.parse(redoStack.pop()); validateSel(); save(); renderAll(); }
-function validateSel(){ if (ui.sel?.kind==='furn' && !getF(ui.sel.id)) ui.sel = null; }
+function validateSel(){ if(ui.sel?.kind==='furn'&&!getF(ui.sel.id))ui.sel=null;if(ui.sel?.kind==='room'&&!state.plan.rooms.some(r=>r.id===ui.sel.id))ui.sel=null; }
 const getF = id => state.furniture.find(f => f.id === id);
 
 /* ======================= 几何工具 ======================= */
@@ -776,9 +864,8 @@ function renderOpenings(){
     if (v){ const L = y1-y0, m = (x0+x1)/2; s += `<rect x="${m-45}" y="${y0}" width="40" height="${L*.55}" fill="#fff" ${DS}/><rect x="${m+5}" y="${y1-L*.55}" width="40" height="${L*.55}" fill="#fff" ${DS}/>`; }
     else { const L = x1-x0, m = (y0+y1)/2; s += `<rect x="${x0}" y="${m-45}" width="${L*.55}" height="40" fill="#fff" ${DS}/><rect x="${x1-L*.55}" y="${m+5}" width="${L*.55}" height="40" fill="#fff" ${DS}/>`; }
   });
-  // 入户标识
-  s += `<path d="M3350 8755H4350M4150 8600L4400 8755L4150 8910" fill="none" stroke="#b5653a" stroke-width="2" vector-effect="non-scaling-stroke"/>
-        <text x="3380" y="8600" font-size="200" fill="#b5653a">${tr('入户','Entry')}</text>`;
+  const entry=DOORS.find(d=>d.entry);
+  if(entry){const [x,y]=entry.h;s+=`<text x="${x-500}" y="${y+400}" font-size="200" fill="#b5653a">${tr('入户','Entry')}</text>`;}
   $('#gOpen').innerHTML = s;
 }
 
@@ -805,11 +892,9 @@ function renderDims(){
     return s;
   };
   const g = $('#gDims');
-  g.innerHTML =
-    chain(true,-750,0,[1580,240,2760,240,1540,240,3670]) + chain(true,-1250,0,[10270]) +
-    chain(true,11350,0,[2180,240,2160,240,5450,240,1340]) + chain(true,11850,0,[11850]) +
-    chain(false,-800,0,[3370,1580,240,2770,240,2360]) + chain(false,-1300,0,[10560]) +
-    chain(false,12750,0,[3370,240,2760,240,3950]) + chain(false,13250,0,[10560]);
+  const pts=ROOMS.flatMap(r=>r.poly),xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
+  const x0=Math.min(...xs),y0=Math.min(...ys),x1=Math.max(...xs),y1=Math.max(...ys);
+  g.innerHTML=chain(true,y0-550,x0,[Math.round(x1-x0)])+chain(false,x0-550,y0,[Math.round(y1-y0)]);
   g.setAttribute('display', ui.layers.dims ? 'inline' : 'none');
 }
 
@@ -862,13 +947,15 @@ function renderSel(){
 }
 
 function renderAll(){
+  activateGeometry();renderOpenings();renderDims();
   renderGrid(); renderRooms(); renderFurn(); renderWalls(); renderLabels(); renderMeasure(); renderSel(); renderPanel(); updateHeader();
   window.View3D?.sync();
 }
 
 function updateHeader(){
+  $('#planTitle').textContent=state.plan.title||'可编辑户型';document.title=state.plan.title||'户型装修设计';
   const tot = ROOMS.filter(r => r.counted !== false).reduce((a,r) => a + area(r.poly), 0);
-  $('#subtitle').textContent = tr(`套内使用面积约 ${fmt(tot)} m² · 尺寸单位 mm · 原图比例 1:60`, `Net floor area ≈ ${fmt(tot)} m² · Units: mm · Original scale 1:60`);
+  $('#subtitle').textContent = `${state.plan.title||'户型'} · ${fmt(tot)} m² · mm · ${state.plan.scale.status==='measured'?'标注尺寸校准':'估计尺度，请复核'}`;
   $('#undo').disabled = !undoStack.length; $('#redo').disabled = !redoStack.length;
   $('#undo').style.opacity = undoStack.length ? 1 : .4; $('#redo').style.opacity = redoStack.length ? 1 : .4;
 }
@@ -1005,7 +1092,7 @@ function roomPanel(r){
       <div><small>${tr('周长','Perimeter')}</small><span class="big">${fmt(perim(r.poly),1)}</span> m</div>
       <div><small>${tr('开间','Width')}</small><span class="big">${x1-x0}</span> mm</div>
       <div><small>${tr('进深','Depth')}</small><span class="big">${y1-y0}</span> mm</div></div>
-    <div class="muted">${tr(`墙面面积（层高 2.8m，未扣门窗）约 ${fmt(perim(r.poly)*2.8,1)} m²`, `Wall area (2.8m ceiling, openings not deducted) ≈ ${fmt(perim(r.poly)*2.8,1)} m²`)}</div></section>
+    <div class="muted">${tr(`墙面面积（层高 ${state.plan.height/1000}m，未扣门窗）约 ${fmt(perim(r.poly)*state.plan.height/1000,1)} m²`, `Wall area (${state.plan.height/1000}m ceiling, openings not deducted) ≈ ${fmt(perim(r.poly)*state.plan.height/1000,1)} m²`)}</div></section>
   <section><h3>${tr('地面材料','Flooring')}</h3><div class="mats">${mats}</div>
     <div class="total"><span>${tr('材料估价','Estimated cost')}</span><b>¥${Math.round(a*MATS[st.mat].price*1.05).toLocaleString()}</b></div></section>
   <section><h3>${tr('房间内家具','Furniture in room')} <small>${tr(`${inside.length} 件`, `${inside.length} items`)}</small></h3>
@@ -1087,6 +1174,7 @@ function addItem(it, x, y){
 }
 function toggleWall(id){
   const w = WALLS[+id.slice(1)];
+  if (w[4]==='u') return toast('墙体承重属性未知，请先核实');
   if (w[4]==='b') return toast(tr('承重墙（黑色）不可拆除', 'Load-bearing walls (black) cannot be removed'));
   if (w[4]==='e') return toast(tr('外墙属于建筑外围护结构，不建议拆除', 'Exterior walls are part of the building envelope and should not be removed'));
   const on = state.demolished.includes(id);
@@ -1471,17 +1559,20 @@ document.addEventListener('pointerdown', e => { const m = $('details.menu'); if 
 matchMedia('(max-width:1100px)').addEventListener('change', () => drawer(null));
 drawer(null);                                  // 恢复上次的面板收起状态
 $('#exportPng').onclick = exportPNG;
-$('#exportJson').onclick = () => download(tr('户型装修方案', 'floor-plan-design') + '.json', new Blob([JSON.stringify(state, null, 2)], {type:'application/json'}));
+$('#exportJson').onclick = () => download(tr('户型装修方案', 'floor-plan-design') + '.json', new Blob([JSON.stringify({...state,plan:exportPlan()}, null, 2)], {type:'application/json'}));
 $('#importJson').onclick = () => $('#fileIn').click();
 $('#fileIn').onchange = e => {
   const file = e.target.files[0]; if (!file) return;
   file.text().then(txt => {
-    try { const s = JSON.parse(txt); if (!Array.isArray(s.furniture)) throw 0; const b = snap(); state = fixState(s); ui.sel = null; commit(b); renderAll(); toast(tr('方案已导入', 'Plan imported')); }
-    catch(err){ toast(tr('文件格式不正确', 'Invalid file format')); }
+    try { const s = JSON.parse(txt); if(s.schemaVersion===1)loadPlan(s);else { const ready=fixState(s);const b=snap();state=ready;ui.sel=null;commit(b);renderAll();fitView(); } toast(tr('方案已导入', 'Plan imported')); }
+    catch(err){ toast(err.message || tr('文件格式不正确', 'Invalid file format')); }
   });
   e.target.value = '';
 };
-$('#reset').onclick = () => { if (confirm(tr('恢复为默认设计方案？（可撤销）', 'Reset to the default design? (undoable)'))){ const b = snap(); state = defaultState(); ui.sel = null; commit(b); renderAll(); } };
+$('#editPlan').onclick=()=>{$('#planText').value=JSON.stringify(exportPlan(),null,2);$('#planError').textContent='';$('#planEditor').showModal();};
+$('#cancelPlan').onclick=()=>$('#planEditor').close();
+$('#applyPlan').onclick=()=>{try{loadPlan(JSON.parse($('#planText').value));$('#planEditor').close();}catch(e){$('#planError').textContent=e.message;}};
+$('#reset').onclick = () => { if (confirm(tr('恢复为默认设计方案？（可撤销）', 'Reset to the default design? (undoable)'))){ const b = snap(); state = defaultState(); ui.sel = null; commit(b); renderAll(); fitView(); } };
 // 横竖屏切换、表头换行等都会改变画布尺寸；尺寸从 0 恢复（如首次布局）时重新适应窗口
 // 其余尺寸变化（收起 / 展开面板等）保持画面中心不动
 let lastW = 0, lastH = 0;
@@ -1502,7 +1593,7 @@ function setLang(l){
 $('#langSel').onclick = e => { const l = e.target.closest('[data-lang]')?.dataset.lang; if (l && l !== LANG) setLang(l); };
 
 applyStaticLang(); syncFullscreen();
-buildDefs(); buildLib(); renderOpenings(); renderDims();
+buildDefs(); buildLib(); activateGeometry(); renderOpenings(); renderDims();
 $('#tip').textContent = TIPS()['2d'];
 fitView(); renderAll();
 </script>
@@ -1521,10 +1612,10 @@ import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import {CSS2DRenderer, CSS2DObject} from 'three/addons/renderers/CSS2DRenderer.js';
 
 const stage = $('#stage'), host = $('#view3d');
-const OX = 6000, OY = 5300, H = 2.8, FOV = 45;       // 户型中心放在世界原点，层高 2.8 m
+let OX = BOUNDS.x+BOUNDS.w/2, OY = BOUNDS.y+BOUNDS.h/2, H = state.plan.height/1000; const FOV = 45;       // 户型中心放在世界原点，层高 2.8 m
 const wx = x => (x - OX) / 1000, wz = y => (y - OY) / 1000, M = v => v / 1000;
 const SW = () => stage.clientWidth, SH = () => stage.clientHeight;
-const opt = {cut:2.8, furn:true, labels:true, night:false, hour:10, mode:'orbit'};
+const opt = {cut:H, furn:true, labels:true, night:false, hour:10, mode:'orbit'};
 
 let inited = false, active = false, raf = 0, anim = null, fly = null;
 let renderer, labelRenderer, scene, camera, orbit, walkCtl, hemi, sun, ground, glassMat, wallMat, capMat, frameMat;
@@ -2289,7 +2380,7 @@ function shapeOf(poly, flip){ const s = new THREE.Shape(); poly.forEach(([x, y],
 
 function buildArch(){
   clearGroup(archFloor); clearGroup(archUp); lampG.clear(); doors.length = 0; colliders = [];
-  const top = opt.cut;
+  const top = Math.min(opt.cut,H);
   ROOMS.forEach(r => {
     const m = floorMat(state.rooms[r.id].mat), bay = r.counted === false;
     const geo = bay ? new THREE.ExtrudeGeometry(shapeOf(r.poly), {depth:.45, bevelEnabled:false}) : new THREE.ShapeGeometry(shapeOf(r.poly));
@@ -2313,10 +2404,10 @@ function buildArch(){
     colliders.push([wx(w[0]), wz(w[1]), wx(w[2]), wz(w[3])]);
   });
   // 门洞、飘窗洞口上方过梁
-  [...DOORS.map(d => [d.rect, 2.1]), ...SLIDES.map(s => [s.rect, s.v ? 2.4 : 2.1]), [[10270,800,10510,2600], 2.4], [[10270,4260,10510,5740], 2.4]]
+  [...DOORS.map(d => [d.rect, 2.1]), ...SLIDES.map(s => [s.rect, s.v ? 2.4 : 2.1])]
     .forEach(([r, h]) => { if (top > h) wallBox(r, h, top); });
   WINS.forEach((r, i) => {
-    const sill = i === 0 ? 1.4 : i >= 6 ? .45 : .9, head = 2.4;
+    const sill = .9, head = Math.min(2.4,H);
     wallBox(r, 0, Math.min(sill, top)); if (top > head) wallBox(r, head, top);
     colliders.push([wx(r[0]), wz(r[1]), wx(r[2]), wz(r[3])]);
     const gTop = Math.min(head, top); if (gTop <= sill) return;
@@ -2376,7 +2467,7 @@ function buildLabels(){
 // 只重建变化的部分
 function sync(force){
   if (!inited || (!active && !force)) return;
-  const a = JSON.stringify([state.rooms, state.demolished, opt.cut]), f = JSON.stringify(state.furniture), l = JSON.stringify([state.rooms, opt.cut]);
+  const a = JSON.stringify([state.plan,state.rooms, state.demolished, opt.cut]), f = JSON.stringify(state.furniture), l = JSON.stringify([state.plan.rooms,state.rooms, opt.cut]);
   if (force || a !== sigArch){ sigArch = a; buildArch(); }
   if (force || f !== sigFurn){ sigFurn = f; buildFurn(); }
   if (force || l !== sigLabels){ sigLabels = l; buildLabels(); }
@@ -2421,8 +2512,13 @@ function isoFrom(P){
   const d = THREE.MathUtils.clamp(P.p.y, 5, 30), dir = new THREE.Vector3(.3, .82, .49).normalize();
   return pose(P.t.clone(), P.t.clone().addScaledVector(dir, d));
 }
-const isoWhole = () => pose(new THREE.Vector3(0, 0, 0), new THREE.Vector3(5.5, 15.5, 10));
-const topWhole = () => pose(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 19, 1e-4));
+function wholeDistance(){
+  const radius=Math.hypot((BOUNDS.w-3000)/2000,(BOUNDS.h-3000)/2000,H/2);
+  const vf=FOV*Math.PI/180, hf=2*Math.atan(Math.tan(vf/2)*SW()/SH());
+  return Math.max(5,radius/Math.sin(Math.min(vf,hf)/2)*1.12);
+}
+const isoWhole = () => {const t=new THREE.Vector3(0,H*.35,0);return pose(t,t.clone().addScaledVector(new THREE.Vector3(.3,.82,.49).normalize(),wholeDistance()));};
+const topWhole = () => {const t=new THREE.Vector3(0,0,0);return pose(t,new THREE.Vector3(0,wholeDistance(),1e-4));};
 const curPose = () => pose(orbit.target.clone(), camera.position.clone());
 // 以目标点为中心做球坐标插值：镜头沿弧线倾斜环绕，而不是直线穿越
 function camTween(A, B, e){
@@ -2451,7 +2547,7 @@ async function enter(){
   renderer.setSize(SW(), SH()); labelRenderer.setSize(SW(), SH()); camera.aspect = SW()/SH(); camera.updateProjectionMatrix();
   sync(true);
   opt.mode = 'orbit'; orbit.enabled = false; showLabels(false);
-  const A = planPose(), B = isoFrom(A);
+  const A = planPose(), B = isoWhole();
   grow = 0; furnGrow = 0; applyGrow(); setPose(A);
   stage.classList.add('animating');
   startLoop(); renderer.render(scene, camera);
@@ -2572,7 +2668,7 @@ function setMode(m){
     window.select(null);
     if (opt.cut < H){ opt.cut = H; syncCutBtns(); sync(); }
     orbit.enabled = false; fly = null;
-    camera.position.set(wx(4200), 1.6, wz(8755)); camera.lookAt(wx(7000), 1.5, wz(8755));   // 入户门外
+    const r=ROOMS.find(r=>r.at)||ROOMS[0], p=r.at||r.poly[0]; camera.position.set(wx(p[0]),1.6,wz(p[1]));camera.lookAt(wx(p[0]+1000),1.5,wz(p[1]));   // 入户门外
     $('#walkOverlay').style.display = 'flex';
     syncHint3d();
   } else {
@@ -2668,7 +2764,30 @@ function shot(){ const a = document.createElement('a'); a.download = tr('户型�
 
 function relang(){ syncWalkTexts(); if (inited) buildLabels(); }
 
-window.View3D = {enter, exit, relang, sync:() => sync(), shot, groundAt, flyToRoom:id => active && !anim && flyToRoom(id), walking:() => active && opt.mode === 'walk'};
+window.View3D = {
+  setPlan(p,x,y){OX=x;OY=y;H=p.height/1000;opt.cut=H;sigArch='';sigLabels='';sigFurn='';if(inited)sync(true);},enter, exit, relang, sync:() => sync(), shot, groundAt, flyToRoom:id => active && !anim && flyToRoom(id), walking:() => active && opt.mode === 'walk'};
 </script>
+<details style="position:fixed;bottom:22px;left:8px;z-index:50;background:#fff;font:11px sans-serif;max-width:90vw"><summary>开源来源 / MIT License</summary><div style="padding:10px;max-height:45vh;overflow:auto"><a href="https://github.com/wy51ai/floorplan-3d" target="_blank" rel="noopener">基于 wy51ai/floorplan-3d · Copyright (c) 2026 wuyi</a><pre style="white-space:pre-wrap">MIT License
+
+Copyright (c) 2026 wuyi
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+</pre></div></details>
 </body>
 </html>

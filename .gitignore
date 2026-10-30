@@ -23,3 +23,9 @@ tmp/
 # 环境变量
 .env
 .env.*
+
+# Agent 生成结果和测试运行产物
+outputs/
+__pycache__/
+*.pyc
+.venv*/
