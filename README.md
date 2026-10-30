@@ -1,40 +1,6 @@
 # floorplan-3d-agent-skill
 
-基于 [wy51ai/floorplan-3d](https://github.com/wy51ai/floorplan-3d)，上游提交 `730ec0923a018fdf38b4687c5ef385c7dcac451f`。保留原作者 `Copyright (c) 2026 wuyi` 及 MIT 许可证；新增 Agent Skill、完整户型加载、几何数据编辑、校验与单文件生成。原英文功能说明保留在 README.en.md。
-
-## 原作者、版权与完整许可证
-
-本项目基于 **[wy51ai/floorplan-3d](https://github.com/wy51ai/floorplan-3d)** 开发，原作者为 **[wuyi（GitHub: wy51ai）](https://github.com/wy51ai)**。原项目的版权声明如下，完整保留：
-
-> Copyright (c) 2026 wuyi
-
-本仓库是由 `lbj00jay` 维护的衍生版本；图片识别 Skill、完整户型导入及相关增强由本仓库新增，不表示原作者参与或背书。上游原有代码的版权归属及 MIT 授权保持不变。
-
-以下为项目 [LICENSE](LICENSE) 文件的完整原文；生成的 HTML 页面也保留了原作者版权、来源链接与完整许可证。
-
-```text
-MIT License
-
-Copyright (c) 2026 wuyi
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+基于 [wy51ai/floorplan-3d](https://github.com/wy51ai/floorplan-3d)，保留原作者 `Copyright (c) 2026 wuyi` 及 MIT 许可证；新增 Agent Skill、完整户型加载、几何数据编辑、校验与单文件生成。原英文功能说明保留在 README.en.md。
 
 ## 使用方式
 
@@ -88,3 +54,37 @@ python3 -m unittest discover -s tests -v
 ## 开源与发布
 
 本项目采用 MIT 许可证，允许修改、再发布与商用。分发时保留原作者版权声明和完整 LICENSE；生成的HTML也内嵌许可证与来源链接。引用第三方图片的权限须单独处理。
+
+## 原作者、版权与完整许可证
+
+本项目基于 **[wy51ai/floorplan-3d](https://github.com/wy51ai/floorplan-3d)** 开发，原作者为 **[wuyi（GitHub: wy51ai）](https://github.com/wy51ai)**。原项目的版权声明如下，完整保留：
+
+> Copyright (c) 2026 wuyi
+
+本仓库是由 `lbj00jay` 维护的衍生版本；图片识别 Skill、完整户型导入及相关增强由本仓库新增，不表示原作者参与或背书。上游原有代码的版权归属及 MIT 授权保持不变。
+
+以下为项目 [LICENSE](LICENSE) 文件的完整原文；生成的 HTML 页面也保留了原作者版权、来源链接与完整许可证。
+
+```text
+MIT License
+
+Copyright (c) 2026 wuyi
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
