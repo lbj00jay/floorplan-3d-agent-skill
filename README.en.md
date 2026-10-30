@@ -1,5 +1,36 @@
 # Floor Plan Interior Designer
 
+## Original author, copyright and license
+
+This derivative project is based on **[wy51ai/floorplan-3d](https://github.com/wy51ai/floorplan-3d)** by **[wuyi (wy51ai)](https://github.com/wy51ai)**. The original copyright notice and complete MIT License are preserved below and in [LICENSE](LICENSE).
+
+This fork is maintained by `lbj00jay`. The image-to-floorplan Skill and related enhancements are additions in this fork; they do not imply the original author's participation or endorsement.
+
+```text
+MIT License
+
+Copyright (c) 2026 wuyi
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+
 [中文](README.md) | English
 
 A pure front-end tool for interior design on a floor plan: place furniture, remove or modify walls, and take measurements on a 2D plan, then switch to a Three.js 3D scene with one click — view it from above or walk through it in first person. The whole app is a single `index.html`: no build step, just open it.

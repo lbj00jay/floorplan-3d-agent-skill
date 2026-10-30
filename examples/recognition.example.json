@@ -1,0 +1,8 @@
+{
+  "source": "合成示例，仅说明报告格式",
+  "image": {"width": 1000, "height": 720},
+  "transform": {"mmPerPixel": 10, "originPx": [80, 100], "rotationApplied": 0},
+  "scaleEvidence": ["8000 mm 内净宽标注", "5000 mm 进深标注"],
+  "objects": [{"id":"I1","observedType":"床","mappedType":"bed","sizeSource":"合成数据指定","orientation":"床头朝上"}],
+  "uncertainties": ["中间墙承重属性未知；使用 u", "高度为模板默认"]
+}

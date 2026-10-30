@@ -1,89 +1,77 @@
-# 户型装修设计
+# 图片转可编辑户型 · floorplan-image
 
-中文 | [English](README.en.md)
+基于 [wy51ai/floorplan-3d](https://github.com/wy51ai/floorplan-3d)，上游提交 `730ec0923a018fdf38b4687c5ef385c7dcac451f`。保留原作者 `Copyright (c) 2026 wuyi` 及 MIT 许可证；新增 Agent Skill、完整户型加载、几何数据编辑、校验与单文件生成。原英文功能说明保留在 README.en.md。
 
-纯前端的户型装修设计工具：在 2D 平面图上摆放家具、拆改墙体、测量尺寸，一键切换到 Three.js 3D 场景，可以鸟瞰，也可以第一人称漫游。整个应用就是一个 `index.html`，无需构建，打开即用。
+## 原作者、版权与完整许可证
 
-## 功能
+本项目基于 **[wy51ai/floorplan-3d](https://github.com/wy51ai/floorplan-3d)** 开发，原作者为 **[wuyi（GitHub: wy51ai）](https://github.com/wy51ai)**。原项目的版权声明如下，完整保留：
 
-**2D 平面布置**
-- 按原始户型 1:60 / 1:100 比例显示，尺寸单位 mm
-- 从左侧家具库拖入 60 余种家具家电（卧室、客厅、餐厨、卫浴、家电、书房休闲）
-- 拖动移动、旋转（Shift 自由角度）、调整尺寸，贴墙自动吸附
-- 测量工具（靠近墙面自动吸附，Shift 锁定水平 / 垂直）
-- 拆改非承重墙，承重墙单独标示
-- 图层开关：尺寸标注、房间名、家具、网格、承重墙
+> Copyright (c) 2026 wuyi
 
-**3D 场景**
-- 鸟瞰、斜视、俯视多种视角，点击房间列表可飞到对应房间
-- 漫游模式：桌面端 WASD + 鼠标，触屏设备用虚拟摇杆，可以点门开关
-- 全高墙 / 剖切墙切换，日照时间滑块，夜景灯光
-- 精细家具模型：柜门分缝与拉手、软包床头、带环境反射的金属与陶瓷材质等
-- 在 3D 中也能选中、拖动家具，与 2D 方案实时同步
+本仓库是由 `lbj00jay` 维护的衍生版本；图片识别 Skill、完整户型导入及相关增强由本仓库新增，不表示原作者参与或背书。上游原有代码的版权归属及 MIT 授权保持不变。
 
-**方案与统计**
-- 房间面积与套内使用面积自动统计
-- 为每个房间更换地面材料（木地板、地砖、大理石、水磨石、地毯等），按面积加 5% 损耗估算造价
-- 撤销 / 重做，方案自动保存在浏览器本地
-- 中文 / English 界面切换（顶栏右侧按钮，默认中文，选择会记住）
-- 导出 PNG 图片，导出 / 导入方案 JSON
+以下为项目 [LICENSE](LICENSE) 文件的完整原文；生成的 HTML 页面也保留了原作者版权、来源链接与完整许可证。
 
-## 快速开始
+```text
+MIT License
 
-```bash
-git clone <仓库地址>
-cd <仓库目录>
+Copyright (c) 2026 wuyi
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
-然后直接用浏览器打开 `index.html`。也可以起一个本地静态服务器：
+## 使用方式
 
-```bash
-python3 -m http.server 8000
-# 访问 http://localhost:8000
+将 `skills/floorplan-image` 文件夹复制到 Agent 的技能目录，例如 `~/.codex/skills/floorplan-image`。对有视觉能力的 Codex/Agent 输入一张清晰平面户型图，并说：
+
+> 使用 $floorplan-image，把这张图还原成可编辑的 2D/3D 户型页面。按原图映射家具类型、位置、朝向与尺寸；区分实测和估计，输出 HTML、JSON 和叠图。
+
+Agent 根据 SKILL.md 识别图片，再运行 Python 脚本。HTML 自身不调用 AI API，也不包含 API 密钥。当前无需训练或部署模型。单张室内实景照不能唯一恢复完整户型，当前几何仅支持正交墙体。
+
+## 不通过 Agent，直接加载数据
+
+```sh
+python3 skills/floorplan-image/scripts/plan_tools.py validate examples/two-room.json
+python3 skills/floorplan-image/scripts/plan_tools.py build examples/two-room.json --output outputs/two-room.html
+python3 -m http.server 18763 --bind 127.0.0.1
 ```
 
-> Three.js 通过 jsDelivr CDN 加载，首次打开 3D 场景需要联网。
+浏览器访问 `/outputs/two-room.html`。根目录 `index.html` 仍可直接打开查看原始示例，也可从“文件 → 导入方案”加载任意完整计划。
 
-## 快捷键
+- 家具：拖动、旋转、调整宽深，在2D和3D之间同步。
+- 建筑：文件 → 编辑户型数据，修改房间多边形、墙矩形、门窗；可撤销。
+- 导出方案包含完整建筑、家具、拆墙和测量；导入和刷新恢复。旧版仅家具 JSON 不再接收。
+- 墙体未知承重属性用 `u`，页面不允许直接拆除。
+- 生成单文件内嵌计划和完整 MIT 许可；Three.js 通过 CDN 加载，3D需要联网。
 
-| 按键 | 作用 |
-| --- | --- |
-| `T` | 切换 2D / 3D |
-| `V` / `M` / `X` | 选择 / 测量 / 拆改墙体 |
-| `R` / `Shift+R` | 选中家具顺时针 / 逆时针旋转 90° |
-| `Delete` / `Backspace` | 删除选中家具 |
-| `Ctrl/⌘ + D` | 复制选中家具 |
-| `Ctrl/⌘ + Z`，`Ctrl/⌘ + Shift + Z` | 撤销，重做 |
-| `F` | 适应窗口 |
-| `+` / `-` | 放大 / 缩小 |
-| `[` / `]` | 展开 / 收起左侧家具库、右侧面板 |
-| `Shift + F` | 全屏 |
-| `Esc` | 取消当前操作 |
-| 漫游：`WASD` / 方向键，`Shift`，`E` | 移动，快走，开关门 |
+数据协议与家具映射见 `skills/floorplan-image/references/`。生成器仅依赖 Python3.8+ 标准库。技能模板 `assets/index.html` 应与根目录 HTML 保持一致，测试会检查。
 
-## 技术栈
+## 验证
 
-- 原生 HTML / CSS / JavaScript，无框架、无构建步骤
-- 2D 平面图用 SVG 绘制
-- 3D 场景用 [Three.js](https://threejs.org/) r160（OrbitControls、PointerLockControls、RoundedBoxGeometry、RoomEnvironment、CSS2DRenderer）
-- 数据保存在 `localStorage`
+```sh
+python3 -m unittest discover -s tests -v
+```
 
-## 自定义户型
+浏览器集成验收：安装 `playwright` 及匹配的 Chromium，然后运行 `python3 tests/browser_smoke.py`。脚本启动独立临时端口和无登录浏览器，检查完整计划切换、几何与家具修改、导入导出、撤销、刷新恢复和3D渲染。结果与截图保存于 gitignored `outputs/`。
 
-户型数据写在 `index.html` 里：
+合成样例只验证工程链路，不代表真实图片识别准确率。真实质量需使用用户图片逐张叠图复核；无尺度输入的面积/造价仅为估计。窗台高度和家具细节主要采用模板默认值。
 
-- `ROOMS`：房间多边形、名称、默认地面材料
-- `WALLS` / `WINS`：墙体与窗洞
-- `MATS`：地面材料名称与单价
-- `LIB`：家具库（类型、名称、默认尺寸、颜色）
-- `buildFurniture()`：各类家具的 3D 模型
+## 开源与发布
 
-改这些数据就能换成自己的户型。
-
-## 社交媒体
-
-- X（Twitter）：[@akokoi1](https://x.com/akokoi1)
-
-## 许可协议
-
-[MIT](LICENSE)
+本项目采用 MIT 许可证，允许修改、再发布与商用。分发时保留原作者版权声明和完整 LICENSE；生成的HTML也内嵌许可证与来源链接。引用第三方图片的权限须单独处理。
