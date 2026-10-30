@@ -1,4 +1,4 @@
-# 图片转可编辑户型 · floorplan-image
+# floorplan-3d-agent-skill
 
 基于 [wy51ai/floorplan-3d](https://github.com/wy51ai/floorplan-3d)，上游提交 `730ec0923a018fdf38b4687c5ef385c7dcac451f`。保留原作者 `Copyright (c) 2026 wuyi` 及 MIT 许可证；新增 Agent Skill、完整户型加载、几何数据编辑、校验与单文件生成。原英文功能说明保留在 README.en.md。
 

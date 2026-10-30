@@ -1,4 +1,4 @@
-# Floor Plan Interior Designer
+# floorplan-3d-agent-skill
 
 ## Original author, copyright and license
 
