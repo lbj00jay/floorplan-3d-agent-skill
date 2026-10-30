@@ -418,5 +418,19 @@
     "w": 750,
     "d": 800,
     "color": "#c9a98a"
+  },
+  {
+    "type": "ottoman",
+    "name": "方形脚凳",
+    "w": 650,
+    "d": 600,
+    "color": "#b8b6ae"
+  },
+  {
+    "type": "endtable",
+    "name": "方形边几",
+    "w": 600,
+    "d": 500,
+    "color": "#c9ad6d"
   }
 ]

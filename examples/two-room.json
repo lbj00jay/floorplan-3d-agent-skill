@@ -183,42 +183,69 @@
       "id": "I1",
       "type": "bed",
       "name": "双人床",
-      "cx": 6200,
-      "cy": 1500,
+      "cx": 6200.0,
+      "cy": 1000.0,
       "w": 1800,
       "d": 2000,
       "rot": 0,
       "color": "#c9d6df",
       "evidence": {
         "source": "合成案例指定参数"
+      },
+      "placement": {
+        "mode": "wall",
+        "roomId": "R2",
+        "edgeIndex": 0,
+        "side": "back",
+        "gap": 0,
+        "maxAdjust": 120,
+        "evidence": "合成示例中明确指定的靠墙关系"
       }
     },
     {
       "id": "I2",
       "type": "wardrobe",
       "name": "衣柜",
-      "cx": 7600,
-      "cy": 3600,
+      "cx": 7700.0,
+      "cy": 3600.0,
       "w": 2000,
       "d": 600,
       "rot": 90,
       "color": "#c9d6df",
       "evidence": {
         "source": "合成案例指定参数"
+      },
+      "placement": {
+        "mode": "wall",
+        "roomId": "R2",
+        "edgeIndex": 1,
+        "side": "back",
+        "gap": 0,
+        "maxAdjust": 120,
+        "evidence": "合成示例中明确指定的靠墙关系"
       }
     },
     {
       "id": "I3",
       "type": "sofa",
       "name": "沙发",
-      "cx": 2000,
-      "cy": 4500,
+      "cx": 2000.0,
+      "cy": 4600.0,
       "w": 2400,
       "d": 800,
       "rot": 180,
       "color": "#b7c4b0",
       "evidence": {
         "source": "合成案例指定参数"
+      },
+      "placement": {
+        "mode": "wall",
+        "roomId": "R1",
+        "edgeIndex": 2,
+        "side": "back",
+        "gap": 0,
+        "maxAdjust": 120,
+        "evidence": "合成示例中明确指定的靠墙关系"
       }
     },
     {
@@ -281,14 +308,23 @@
       "id": "I8",
       "type": "nightstand",
       "name": "床头柜",
-      "cx": 5000,
-      "cy": 700,
+      "cx": 5000.0,
+      "cy": 200.0,
       "w": 450,
       "d": 400,
       "rot": 0,
       "color": "#c9d6df",
       "evidence": {
         "source": "合成案例指定参数"
+      },
+      "placement": {
+        "mode": "wall",
+        "roomId": "R2",
+        "edgeIndex": 0,
+        "side": "back",
+        "gap": 0,
+        "maxAdjust": 120,
+        "evidence": "合成示例中明确指定的靠墙关系"
       }
     }
   ],
