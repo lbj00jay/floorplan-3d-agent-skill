@@ -83,11 +83,15 @@ def run():
             page.screenshot(path=str(out/'two-room-3d.png'))
             checks.append("自定义户型WebGL 3D场景")
             # 3D激活时切换另一户型，标签和家具也应一起重建。
-            changed=json.loads(json.dumps(plan));changed['id']='other';changed['rooms'][0]['name']='新方案';changed['furniture']=changed['furniture'][:3]
+            changed=json.loads(json.dumps(plan));changed['id']='other';changed['height']=3200;changed['furniture'][0].pop('color');changed['rooms'][0]['name']='新方案';changed['furniture']=changed['furniture'][:3]
             page.evaluate('p=>Floorplan.loadPlan(p)',changed)
             page.wait_for_function("document.querySelector('#roomList').textContent.includes('新方案')")
             assert page.evaluate('Floorplan.exportPlan().furniture.length')==3
-            checks.append("3D激活期间更换完整户型")
+            assert page.locator('[data-cut="full"]').evaluate("e=>e.classList.contains('on')")
+            page.locator('[data-cut="1.2"]').click();page.locator('[data-cut="full"]').click()
+            assert page.locator('[data-cut="full"]').evaluate("e=>e.classList.contains('on')")
+            assert page.evaluate("Floorplan.exportPlan().furniture[0].color").startswith('#')
+            checks.append("3D激活期间更换户型、动态层高和默认家具颜色")
             # 原始示例仍可打开，不依赖新样例的缓存。
             page.goto(url+'/index.html');page.wait_for_function('!!window.Floorplan')
             assert page.evaluate('Floorplan.exportPlan().rooms.length')==13

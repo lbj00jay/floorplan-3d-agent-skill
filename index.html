@@ -268,7 +268,7 @@ main.drawer-panel #fab{opacity:0;visibility:hidden}
       <button class="btn chip on" data-layer="wallSnap" title="拖动家具时贴墙吸附" data-en-title="Snap furniture to walls while dragging" data-en="Wall snap">贴墙吸附</button>
     </div>
     <div class="grp only3d">
-      <button class="btn chip on" data-cut="2.8" data-en="Full walls">全高墙</button>
+      <button class="btn chip on" data-cut="full" data-en="Full walls">全高墙</button>
       <button class="btn chip" data-cut="1.2" data-en="Cut walls">剖切墙</button>
     </div>
     <div class="grp only3d" id="toggles3d">
@@ -549,7 +549,7 @@ function initialPlan(){
 }
 function planState(p){
   const rooms = {}; p.rooms.forEach(r => rooms[r.id] = {name:r.name,mat:r.mat});
-  return {plan:JSON.parse(JSON.stringify(p)), furniture:JSON.parse(JSON.stringify(p.furniture)),rooms,demolished:[],measures:[]};
+  return {plan:JSON.parse(JSON.stringify(p)), furniture:JSON.parse(JSON.stringify(p.furniture)).map(f=>({...f,color:f.color||typeColor(f.type)})),rooms,demolished:[],measures:[]};
 }
 function defaultState(){ return planState(initialPlan()); }
 const STORE = 'floorplan-image-v1:' + location.pathname + ':' + (EMBEDDED_PLAN?.id || 'demo');
@@ -567,6 +567,7 @@ function fixState(s){
   }
   if(!Array.isArray(s.furniture)) s.furniture=JSON.parse(JSON.stringify(s.plan.furniture));
   validatePlan({...s.plan,furniture:s.furniture});
+  s.furniture=s.furniture.map(f=>({...f,color:f.color||typeColor(f.type)}));
   s.demolished=(s.demolished||[]).filter(id=>/^w\d+$/.test(id)&&s.plan.walls[+id.slice(1)]);
   s.measures=s.measures||[];
   if(!Array.isArray(s.measures)||s.measures.some(m=>!m||![m.a?.x,m.a?.y,m.b?.x,m.b?.y].every(v=>typeof v==='number'&&Number.isFinite(v))))throw new Error('测量数据无效');
@@ -2713,7 +2714,7 @@ addEventListener('keyup', e => keys[e.code] = false);
 
 /* ======================= 工具栏 ======================= */
 function syncModeBtns(){ document.querySelectorAll('#modes3d .btn').forEach(b => b.classList.toggle('on', b.dataset.mode === opt.mode)); }
-function syncCutBtns(){ document.querySelectorAll('[data-cut]').forEach(b => b.classList.toggle('on', +b.dataset.cut === opt.cut)); }
+function syncCutBtns(){ document.querySelectorAll('[data-cut]').forEach(b => b.classList.toggle('on', (b.dataset.cut==='full'?H:+b.dataset.cut) === opt.cut)); }
 function syncWalkTexts(){
   const t = COARSE
     ? [tr('点击开始，从入户门进入', 'Tap to start at the front door'), tr('左下摇杆移动 · 在画面上拖动转向', 'Joystick moves · drag on screen to look'),
@@ -2734,7 +2735,7 @@ function bindUI(){
   syncWalkTexts();
   $('#vIso').onclick = () => { if (opt.mode === 'walk') setMode('orbit'); else flyTo(isoWhole()); };
   $('#vTop').onclick = () => { if (opt.mode === 'walk') setMode('orbit'); flyTo(topWhole()); };
-  document.querySelectorAll('[data-cut]').forEach(b => b.onclick = () => { if (opt.mode === 'walk') return; opt.cut = +b.dataset.cut; syncCutBtns(); sync(); });
+  document.querySelectorAll('[data-cut]').forEach(b => b.onclick = () => { if (opt.mode === 'walk') return; opt.cut = b.dataset.cut==='full'?H:+b.dataset.cut; syncCutBtns(); sync(); });
   document.querySelectorAll('#toggles3d .btn').forEach(b => b.onclick = () => {
     const k = b.dataset.t; opt[k] = !opt[k]; b.classList.toggle('on', opt[k]);
     if (k === 'furn'){ furnG.visible = opt.furn; if (!opt.furn && ui.sel?.kind === 'furn') window.select(null); }
@@ -2765,7 +2766,7 @@ function shot(){ const a = document.createElement('a'); a.download = tr('户型�
 function relang(){ syncWalkTexts(); if (inited) buildLabels(); }
 
 window.View3D = {
-  setPlan(p,x,y){OX=x;OY=y;H=p.height/1000;opt.cut=H;sigArch='';sigLabels='';sigFurn='';if(inited)sync(true);},enter, exit, relang, sync:() => sync(), shot, groundAt, flyToRoom:id => active && !anim && flyToRoom(id), walking:() => active && opt.mode === 'walk'};
+  setPlan(p,x,y){OX=x;OY=y;H=p.height/1000;opt.cut=H;syncCutBtns();sigArch='';sigLabels='';sigFurn='';if(inited)sync(true);},enter, exit, relang, sync:() => sync(), shot, groundAt, flyToRoom:id => active && !anim && flyToRoom(id), walking:() => active && opt.mode === 'walk'};
 </script>
 <details style="position:fixed;bottom:22px;left:8px;z-index:50;background:#fff;font:11px sans-serif;max-width:90vw"><summary>开源来源 / MIT License</summary><div style="padding:10px;max-height:45vh;overflow:auto"><a href="https://github.com/wy51ai/floorplan-3d" target="_blank" rel="noopener">基于 wy51ai/floorplan-3d · Copyright (c) 2026 wuyi</a><pre style="white-space:pre-wrap">MIT License
 
